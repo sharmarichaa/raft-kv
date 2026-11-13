@@ -10,3 +10,9 @@
 - Without a timeout, one dead node would freeze the leader.
 - SO_RCVTIMEO and SO_SNDTIMEO make read and write give up after N ms.
 - A timeout and a refused connection both look like “call failed” to the caller.
+
+## Leader election
+- Randomized timeouts stop all nodes from becoming candidates at once and splitting the vote.
+- One vote per term (voted_for) means at most one leader per term.
+- A higher term always makes a node step down.
+- A lone node keeps incrementing its term because it can never reach a majority.
