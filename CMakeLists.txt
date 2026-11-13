@@ -9,4 +9,7 @@ target_link_libraries(echo-server Threads::Threads)
 add_executable(framed-server src/net/framed_server.cpp)
 add_executable(framed-client src/net/framed_client.cpp)
 target_link_libraries(framed-server Threads::Threads)
+add_executable(rpc-server src/net/rpc_server.cpp)
+add_executable(rpc-client src/net/rpc_client.cpp)
+target_link_libraries(rpc-server Threads::Threads)
 
