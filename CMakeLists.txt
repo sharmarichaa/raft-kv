@@ -12,4 +12,6 @@ target_link_libraries(framed-server Threads::Threads)
 add_executable(rpc-server src/net/rpc_server.cpp)
 add_executable(rpc-client src/net/rpc_client.cpp)
 target_link_libraries(rpc-server Threads::Threads)
+add_executable(ping-node src/net/ping_node.cpp)
+target_link_libraries(ping-node Threads::Threads)
 
