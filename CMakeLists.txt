@@ -9,6 +9,4 @@ target_link_libraries(echo-server Threads::Threads)
 add_executable(framed-server src/net/framed_server.cpp)
 add_executable(framed-client src/net/framed_client.cpp)
 target_link_libraries(framed-server Threads::Threads)
-find_package(Threads REQUIRED)
-target_link_libraries(echo-server Threads::Threads)
 
