@@ -1,8 +1,17 @@
 #include <iostream>
-#include <cstring>
+#include <thread>
 #include <unistd.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
+
+void handle_client(int client_fd) {
+    char buf[1024];
+    ssize_t n;
+    while ((n = read(client_fd, buf, sizeof(buf))) > 0) {
+        write(client_fd, buf, n);
+    }
+    close(client_fd);
+}
 
 int main() {
     int server_fd = socket(AF_INET, SOCK_STREAM, 0);
@@ -20,11 +29,6 @@ int main() {
 
     while (true) {
         int client_fd = accept(server_fd, nullptr, nullptr);
-        char buf[1024];
-        ssize_t n;
-        while ((n = read(client_fd, buf, sizeof(buf))) > 0) {
-            write(client_fd, buf, n);
-        }
-        close(client_fd);
+        std::thread(handle_client, client_fd).detach();
     }
 }

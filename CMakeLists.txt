@@ -4,3 +4,6 @@ set(CMAKE_CXX_STANDARD 17)
 set(CMAKE_CXX_STANDARD_REQUIRED ON)
 add_executable(raft-node src/main.cpp)
 add_executable(echo-server src/net/echo_server.cpp)
+find_package(Threads REQUIRED)
+target_link_libraries(echo-server Threads::Threads)
+
