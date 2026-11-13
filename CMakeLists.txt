@@ -14,4 +14,6 @@ add_executable(rpc-client src/net/rpc_client.cpp)
 target_link_libraries(rpc-server Threads::Threads)
 add_executable(ping-node src/net/ping_node.cpp)
 target_link_libraries(ping-node Threads::Threads)
+add_executable(election-node src/raft/election_node.cpp)
+target_link_libraries(election-node Threads::Threads)
 
