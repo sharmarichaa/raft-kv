@@ -21,3 +21,9 @@
 - Index starts at 1 like the paper; the dummy entry at 0 makes the prevLogIndex = 0 check simple.
 - Each entry stores the term it was created in, which is how nodes detect conflicts.
   
+## AppendEntries
+- The prevLogIndex/prevLogTerm check makes sure the follower’s log matches the leader’s before anything is added.
+- On a conflict, the follower deletes that entry and everything after it, because the leader’s log wins.
+- Entries we already have are skipped, so a retried RPC doesn’t duplicate anything.
+- The commit index is min(leaderCommit, last new entry), so a follower never commits entries it doesn’t have.
+  
