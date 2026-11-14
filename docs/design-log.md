@@ -16,3 +16,8 @@
 - One vote per term (voted_for) means at most one leader per term.
 - A higher term always makes a node step down.
 - A lone node keeps incrementing its term because it can never reach a majority.
+
+## Log structure
+- Index starts at 1 like the paper; the dummy entry at 0 makes the prevLogIndex = 0 check simple.
+- Each entry stores the term it was created in, which is how nodes detect conflicts.
+  
