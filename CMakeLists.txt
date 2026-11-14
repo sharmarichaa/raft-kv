@@ -16,4 +16,5 @@ add_executable(ping-node src/net/ping_node.cpp)
 target_link_libraries(ping-node Threads::Threads)
 add_executable(election-node src/raft/election_node.cpp)
 target_link_libraries(election-node Threads::Threads)
+add_executable(test-append-entries tests/test_append_entries.cpp)
 
