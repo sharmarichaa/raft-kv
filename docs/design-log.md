@@ -26,3 +26,9 @@
 - On a conflict, the follower deletes that entry and everything after it, because the leader’s log wins.
 - Entries we already have are skipped, so a retried RPC doesn’t duplicate anything.
 - The commit index is min(leaderCommit, last new entry), so a follower never commits entries it doesn’t have.
+
+## Leader replication
+- nextIndex is a guess; matchIndex is confirmed. A failed AppendEntries moves nextIndex back until the logs match.
+- Commit needs a majority, and the entry must be from the current term.
+- Test 6 shows why: old-term entries only commit indirectly, when a current-term entry after them commits.
+  
