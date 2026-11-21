@@ -31,4 +31,6 @@
 - nextIndex is a guess; matchIndex is confirmed. A failed AppendEntries moves nextIndex back until the logs match.
 - Commit needs a majority, and the entry must be from the current term.
 - Test 6 shows why: old-term entries only commit indirectly, when a current-term entry after them commits.
+
+
   
