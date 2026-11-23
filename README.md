@@ -2,7 +2,7 @@
 
 Fault-tolerant distributed key-value store in C++17 built on the Raft consensus algorithm.
 
-**Status:** work in progress (oct 2025 - present)
+**Status:** work in progress (oct 2026 - present)
 
 ## Done so far
 - TCP server handling multiple clients concurrently (one thread per connection)
