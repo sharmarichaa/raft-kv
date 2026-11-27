@@ -32,5 +32,12 @@
 - Commit needs a majority, and the entry must be from the current term.
 - Test 6 shows why: old-term entries only commit indirectly, when a current-term entry after them commits.
 
+## Persistence
+- currentTerm, votedFor and the log must survive a crash. Otherwise a node could vote twice in one term or forget committed entries.
+- State is saved before replying to any RPC that changed it, so a crash right after the reply can't lose it.
+- The write goes to a temp file, then fsync, then an atomic rename, so a crash never leaves a half-written file.
+- commitIndex is not saved, because the leader re-derives it.
+- known cost: every change rewrites the whole file. An append-only WAL would fix that.
+
 
   
