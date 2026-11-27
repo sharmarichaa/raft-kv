@@ -7,12 +7,14 @@
 #include <sstream>
 #include <csignal>
 #include <cstdlib>
+#include <sys/stat.h>
 #include <sys/socket.h>
 #include <netinet/in.h>
 #include "../net/rpc.h"
 #include "log.h"
 #include "append_entries.h"
 #include "leader_state.h"
+#include "../storage/persist.h"
 
 using Clock = std::chrono::steady_clock;
 const int BASE_PORT = 9300;
@@ -22,6 +24,7 @@ const int HEARTBEAT_MS = 100;
 enum class Role { Follower, Candidate, Leader };
 
 int my_id;
+std::string data_dir;
 std::mutex mu;
 Role role = Role::Follower;
 int current_term = 0;
@@ -34,6 +37,13 @@ Clock::time_point election_deadline;
 std::mt19937 rng;
 
 // ---- helpers (call with mu held) ----
+void persist() {
+    if (!save_state(data_dir, current_term, voted_for, raft_log)) {
+        std::cerr << "FATAL: could not save state to disk\n";
+        std::abort();   // never keep running with state we failed to save
+    }
+}
+
 void reset_election_timer() {
     std::uniform_int_distribution<int> d(300, 600);
     election_deadline = Clock::now() + std::chrono::milliseconds(d(rng));
@@ -43,6 +53,7 @@ void step_down_if_newer(int term) {
     if (term > current_term) {
         current_term = term;
         voted_for = -1;
+        persist();
         if (role != Role::Follower)
             std::cout << "[node " << my_id << "] term " << term << ": stepping down\n";
         role = Role::Follower;
@@ -58,8 +69,6 @@ void apply_committed() {
 }
 
 // ---- serialization ----
-// request:  "AE term leader prevIdx prevTerm commit n  (term cmd) x n"
-// commands may not contain newlines; each entry is sent on its own line
 std::string encode_ae(const AppendEntriesArgs& a) {
     std::ostringstream o;
     o << "AE " << a.term << " " << a.leader_id << " " << a.prev_log_index << " "
@@ -73,7 +82,7 @@ AppendEntriesArgs decode_ae(std::istringstream& in) {
     size_t n;
     in >> a.term >> a.leader_id >> a.prev_log_index >> a.prev_log_term
        >> a.leader_commit >> n;
-    in.ignore();  // newline
+    in.ignore();
     for (size_t i = 0; i < n; i++) {
         std::string line;
         std::getline(in, line);
@@ -99,12 +108,12 @@ std::string handle_request(const std::string& msg) {
         in >> term >> cand >> last_idx >> last_term;
         step_down_if_newer(term);
         bool ok = false;
-        // vote rule: candidate's log must be at least as up to date as ours
         bool up_to_date = last_term > raft_log.last_term() ||
             (last_term == raft_log.last_term() && last_idx >= raft_log.last_index());
         if (term == current_term && up_to_date &&
             (voted_for == -1 || voted_for == cand)) {
             voted_for = cand;
+            persist();              // save the vote BEFORE replying
             ok = true;
             reset_election_timer();
         }
@@ -119,6 +128,7 @@ std::string handle_request(const std::string& msg) {
             reset_election_timer();
         }
         auto r = handle_append_entries(raft_log, current_term, commit_index, a);
+        if (!a.entries.empty()) persist();   // log may have changed; save BEFORE replying
         apply_committed();
         return std::to_string(r.term) + " " + (r.success ? "1" : "0");
     }
@@ -129,6 +139,7 @@ std::string handle_request(const std::string& msg) {
         std::getline(in, cmd);
         if (role != Role::Leader) return "NOT_LEADER";
         raft_log.append(current_term, cmd);
+        persist();
         std::cout << "[node " << my_id << "] leader appended index "
                   << raft_log.last_index() << ": " << cmd << "\n";
         return "ACCEPTED " + std::to_string(raft_log.last_index());
@@ -168,6 +179,7 @@ void start_election() {
         role = Role::Candidate;
         current_term++;
         voted_for = my_id;
+        persist();                  // save term + self-vote BEFORE asking for votes
         term = current_term;
         last_idx = raft_log.last_index();
         last_term = raft_log.last_term();
@@ -244,11 +256,23 @@ void replicate_round() {
 }
 
 int main(int argc, char** argv) {
-    if (argc < 2) { std::cerr << "usage: raft-node <id 1-3>\n"; return 1; }
+    if (argc < 2) { std::cerr << "usage: raft-cluster-node <id 1-3>\n"; return 1; }
     my_id = std::atoi(argv[1]);
     signal(SIGPIPE, SIG_IGN);
     rng.seed(std::random_device{}() ^ (my_id * 7919));
-    { std::lock_guard<std::mutex> lock(mu); reset_election_timer(); }
+
+    // load saved state, if any
+    mkdir("data", 0755);
+    data_dir = "data/node" + std::to_string(my_id);
+    mkdir(data_dir.c_str(), 0755);
+    {
+        std::lock_guard<std::mutex> lock(mu);
+        if (load_state(data_dir, current_term, voted_for, raft_log))
+            std::cout << "[node " << my_id << "] recovered from disk: term " << current_term
+                      << ", voted_for " << voted_for << ", " << raft_log.last_index()
+                      << " log entries\n";
+        reset_election_timer();
+    }
     std::thread(serve).detach();
     std::cout << "[node " << my_id << "] started as follower\n";
 
